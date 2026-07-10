@@ -331,6 +331,83 @@ label {
   margin-bottom: 0.75rem;
 }
 
+/* Amount-entry modal */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 100;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+  width: 100%;
+  max-width: 380px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.amount-input {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #0d0d0d;
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  padding: 0.5rem 0.9rem;
+}
+
+.amount-input:focus-within {
+  border-color: var(--accent-dim);
+}
+
+.amount-prefix {
+  font-size: 1.6rem;
+  color: var(--text-dim);
+}
+
+.amount-input input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 1.8rem;
+  font-variant-numeric: tabular-nums;
+  padding: 0;
+  width: 100%;
+}
+
+.amount-input input:focus {
+  outline: none;
+}
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.chip-btn {
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--panel-border);
+  cursor: pointer;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip-btn:hover {
+  border-color: var(--accent-dim);
+}
+
 .settle-select {
   flex: 1;
   min-width: 120px;

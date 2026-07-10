@@ -4,18 +4,9 @@ import { useSession } from '../hooks/useSessions'
 import { usePlayers } from '../hooks/usePlayers'
 import { SessionTable } from '../components/SessionTable'
 import { SettleUp } from '../components/SettleUp'
-import { allCashedOut, seatNets } from '../lib/calc'
-
-function promptAmount(label: string, current?: number): number | null {
-  const raw = window.prompt(label, current != null ? String(current) : '')
-  if (raw === null) return null
-  const val = Number(raw)
-  if (!Number.isFinite(val) || val < 0) {
-    alert('Please enter a valid non-negative number.')
-    return null
-  }
-  return Math.round(val * 100) / 100
-}
+import { AmountModal, type AmountRequest } from '../components/AmountModal'
+import { useDialogs } from '../components/Dialogs'
+import { allCashedOut, seatNets, totalBuyIn } from '../lib/calc'
 
 export function ActiveSession() {
   const { id } = useParams<{ id: string }>()
@@ -36,7 +27,9 @@ export function ActiveSession() {
     deleteSession,
   } = useSession(id)
   const { players } = usePlayers()
+  const { confirm, promptText } = useDialogs()
   const [addingId, setAddingId] = useState('')
+  const [amountReq, setAmountReq] = useState<AmountRequest | null>(null)
 
   if (loading && !session) return <p className="muted">Loading…</p>
   if (!session) return <p className="muted">Session not found.</p>
@@ -47,26 +40,46 @@ export function ActiveSession() {
   const canSettle = allCashedOut(rows)
   const nets = seatNets(rows)
 
-  async function handleBuyIn(seatId: string) {
-    const amt = promptAmount('Buy-in / re-buy amount ($):')
-    if (amt != null && amt > 0) await addBuyIn(seatId, amt)
-  }
+  // Distinct buy-in amounts already used this session, for one-tap re-buys.
+  const buyInPresets = [
+    ...new Set(rows.flatMap((r) => r.buyIns.map((b) => b.amount))),
+  ]
+    .sort((a, b) => a - b)
+    .slice(0, 4)
 
-  async function handleEditBuyIn(buyInId: string, current: number) {
-    const amt = promptAmount('Correct buy-in amount ($) — enter 0 to remove it:', current)
-    if (amt == null) return
-    if (amt === 0) {
-      if (!confirm('Remove this buy-in?')) return
-      await deleteBuyIn(buyInId)
-    } else {
-      await editBuyIn(buyInId, amt)
-    }
-  }
-
-  async function handleCashOut(seatId: string) {
+  function handleBuyIn(seatId: string) {
     const row = rows.find((r) => r.seat.id === seatId)
-    const amt = promptAmount('Cash-out (chip stack) amount ($):', row?.seat.buy_out ?? undefined)
-    if (amt != null) await setBuyOut(seatId, amt)
+    setAmountReq({
+      title: `Buy-in — ${row?.player.name ?? 'player'}`,
+      hint: 'Amount added to the table (buy-in or re-buy).',
+      presets: buyInPresets,
+      confirmLabel: 'Add buy-in',
+      onConfirm: (amt) => addBuyIn(seatId, amt),
+    })
+  }
+
+  function handleEditBuyIn(buyInId: string, current: number) {
+    setAmountReq({
+      title: 'Edit buy-in',
+      hint: 'Correct the amount, or remove this buy-in entirely.',
+      initial: current,
+      presets: buyInPresets,
+      onConfirm: (amt) => editBuyIn(buyInId, amt),
+      onRemove: () => deleteBuyIn(buyInId),
+    })
+  }
+
+  function handleCashOut(seatId: string) {
+    const row = rows.find((r) => r.seat.id === seatId)
+    setAmountReq({
+      title: `Cash out — ${row?.player.name ?? 'player'}`,
+      hint: 'Chip stack the player is leaving with. Enter 0 if they busted.',
+      initial: row?.seat.buy_out ?? undefined,
+      presets: row ? [totalBuyIn(row.buyIns)] : undefined,
+      allowZero: true,
+      confirmLabel: 'Save cash-out',
+      onConfirm: (amt) => setBuyOut(seatId, amt),
+    })
   }
 
   async function handleAddPlayer() {
@@ -76,24 +89,43 @@ export function ActiveSession() {
   }
 
   async function handleEnd() {
-    if (!confirm('End the game and settle up? You can still edit it afterward.')) return
-    await completeSession()
+    const ok = await confirm({
+      title: 'End game & settle?',
+      message: 'You can still reopen and edit it afterward.',
+      confirmLabel: 'End game',
+    })
+    if (ok) await completeSession()
   }
 
   async function handleRename() {
-    const name = window.prompt('Session name:', session?.name ?? '')
+    const name = await promptText({
+      title: 'Rename session',
+      initial: session?.name ?? '',
+      placeholder: 'Session name',
+      allowEmpty: true,
+    })
     if (name !== null) await renameSession(name)
   }
 
   async function handleReopen() {
-    if (!confirm('Reopen this session for editing? It will move back to your live game.')) return
-    await reopenSession()
+    const ok = await confirm({
+      title: 'Reopen session?',
+      message: 'It will move back to your live game so you can edit it.',
+      confirmLabel: 'Reopen',
+    })
+    if (ok) await reopenSession()
   }
 
   async function handleDelete() {
-    if (!confirm('Delete this session permanently? This cannot be undone.')) return
-    const ok = await deleteSession()
-    if (ok) navigate('/')
+    const ok = await confirm({
+      title: 'Delete session?',
+      message: 'This permanently deletes the session and its ledger. This cannot be undone.',
+      confirmLabel: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
+    const deleted = await deleteSession()
+    if (deleted) navigate('/')
   }
 
   return (
@@ -193,6 +225,8 @@ export function ActiveSession() {
             </div>
           </div>
       </div>
+
+      {amountReq && <AmountModal request={amountReq} onClose={() => setAmountReq(null)} />}
     </div>
   )
 }

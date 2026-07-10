@@ -10,6 +10,7 @@ export function SettleUp({ nets }: { nets: Net[] }) {
   const [fromId, setFromId] = useState('')
   const [toId, setToId] = useState('')
   const [amountStr, setAmountStr] = useState('')
+  const [copied, setCopied] = useState(false)
 
   const imbalance = ledgerImbalance(nets)
   const balanced = Math.abs(imbalance) < 0.01
@@ -34,6 +35,23 @@ export function SettleUp({ nets }: { nets: Net[] }) {
   function undoPaid(index: number) {
     const target = recorded[index]
     setPaid((prev) => prev.filter((p) => p !== target))
+  }
+
+  async function copyPayments() {
+    const text = payments.map((p) => `${p.from} → ${p.to}: ${money(p.amount)}`).join('\n')
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      // Fallback for browsers/contexts without the async clipboard API.
+      const ta = document.createElement('textarea')
+      ta.value = text
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    setCopied(true)
+    window.setTimeout(() => setCopied(false), 2000)
   }
 
   function recordManual() {
@@ -132,7 +150,14 @@ export function SettleUp({ nets }: { nets: Net[] }) {
       </div>
 
       <div className="panel">
-        <h2>Settle Up</h2>
+        <div className="row spread" style={{ alignItems: 'center', marginBottom: '0.75rem' }}>
+          <h2 style={{ margin: 0 }}>Settle Up</h2>
+          {payments.length > 0 && (
+            <button className="small felt" onClick={copyPayments}>
+              {copied ? '✓ Copied' : 'Copy'}
+            </button>
+          )}
+        </div>
 
         {!balanced && (
           <div className="banner warn">

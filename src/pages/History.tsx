@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { useSessions } from '../hooks/useSessions'
 import { useStats } from '../hooks/useStats'
+import { useDialogs } from '../components/Dialogs'
 import { signedMoney } from '../lib/calc'
 
 function formatDate(iso: string): string {
@@ -15,9 +16,16 @@ function formatDate(iso: string): string {
 export function History() {
   const { sessions, deleteSession } = useSessions()
   const { stats, reload: reloadStats } = useStats()
+  const { confirm } = useDialogs()
 
   async function handleDelete(id: string, name: string) {
-    if (!confirm(`Delete "${name}" permanently? This cannot be undone.`)) return
+    const ok = await confirm({
+      title: 'Delete session?',
+      message: `"${name}" and its ledger will be permanently deleted. This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+    })
+    if (!ok) return
     await deleteSession(id)
     await reloadStats()
   }

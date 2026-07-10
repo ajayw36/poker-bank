@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Player } from '../lib/types'
+import { useDialogs } from './Dialogs'
 
 interface Props {
   players: Player[]
@@ -10,11 +11,22 @@ interface Props {
 
 export function PlayerRoster({ players, onAdd, onRemove, className = '' }: Props) {
   const [name, setName] = useState('')
+  const { confirm } = useDialogs()
 
   function submit(e: React.FormEvent) {
     e.preventDefault()
     onAdd(name)
     setName('')
+  }
+
+  async function handleRemove(p: Player) {
+    const ok = await confirm({
+      title: `Remove ${p.name}?`,
+      message: 'They leave your roster, but past sessions keep their data.',
+      confirmLabel: 'Remove',
+      danger: true,
+    })
+    if (ok) onRemove(p.id)
   }
 
   return (
@@ -38,14 +50,7 @@ export function PlayerRoster({ players, onAdd, onRemove, className = '' }: Props
           {players.map((p) => (
             <div key={p.id} className="list-item">
               <span>{p.name}</span>
-              <button
-                className="small danger"
-                onClick={() => {
-                  if (confirm(`Remove ${p.name} from your roster? Past sessions keep their data.`)) {
-                    onRemove(p.id)
-                  }
-                }}
-              >
+              <button className="small danger" onClick={() => handleRemove(p)}>
                 Remove
               </button>
             </div>
