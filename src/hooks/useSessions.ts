@@ -147,6 +147,27 @@ export function useSession(sessionId: string | undefined) {
     [load],
   )
 
+  const editBuyIn = useCallback(
+    async (buyInId: string, amount: number) => {
+      const { error } = await supabase
+        .from('buy_ins')
+        .update({ amount })
+        .eq('id', buyInId)
+      if (error) setError(error.message)
+      else await load()
+    },
+    [load],
+  )
+
+  const deleteBuyIn = useCallback(
+    async (buyInId: string) => {
+      const { error } = await supabase.from('buy_ins').delete().eq('id', buyInId)
+      if (error) setError(error.message)
+      else await load()
+    },
+    [load],
+  )
+
   const setBuyOut = useCallback(
     async (seatId: string, amount: number | null) => {
       const { error } = await supabase
@@ -229,6 +250,8 @@ export function useSession(sessionId: string | undefined) {
     loading,
     error,
     addBuyIn,
+    editBuyIn,
+    deleteBuyIn,
     setBuyOut,
     addSeat,
     removeSeat,

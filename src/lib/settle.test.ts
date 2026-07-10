@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { settle, ledgerImbalance, combineNets } from './settle'
+import { settle, ledgerImbalance, combineNets, applyPayments } from './settle'
 import type { Net, Payment } from './types'
 
 const n = (playerId: string, net: number): Net => ({ playerId, name: playerId, net })
@@ -99,6 +99,52 @@ describe('combineNets', () => {
   it('returns the original nets when there are no groups', () => {
     const nets = [n('a', 10), n('b', -10)]
     expect(combineNets(nets, [])).toEqual(nets)
+  })
+})
+
+describe('applyPayments', () => {
+  const pay = (fromId: string, toId: string, amount: number): Payment => ({
+    fromId,
+    from: fromId,
+    toId,
+    to: toId,
+    amount,
+  })
+
+  it('clears a settled debt so no further payment is suggested', () => {
+    const nets = [n('a', 40), n('b', -40)]
+    const remaining = applyPayments(nets, [pay('b', 'a', 40)])
+    expect(settle(remaining)).toEqual([])
+  })
+
+  it('reduces a partially-paid debt', () => {
+    const nets = [n('a', 40), n('b', -40)]
+    const remaining = applyPayments(nets, [pay('b', 'a', 25)])
+    const payments = settle(remaining)
+    expect(payments).toHaveLength(1)
+    expect(payments[0]).toMatchObject({ fromId: 'b', toId: 'a', amount: 15 })
+  })
+
+  it('handles a debtor who paid their whole debt to one person', () => {
+    // c owes 30 total; c hands all 30 to a directly. b still owes 20 -> a.
+    const nets = [n('a', 50), n('b', -20), n('c', -30)]
+    const remaining = applyPayments(nets, [pay('c', 'a', 30)])
+    const payments = settle(remaining)
+    expect(payments).toHaveLength(1)
+    expect(payments[0]).toMatchObject({ fromId: 'b', toId: 'a', amount: 20 })
+  })
+
+  it('ignores payments referencing ids not in the nets', () => {
+    const nets = [n('a', 40), n('b', -40)]
+    const remaining = applyPayments(nets, [pay('x', 'y', 10)])
+    expect(remaining).toEqual(nets)
+  })
+
+  it('avoids floating-point drift', () => {
+    const nets = [n('a', 30.3), n('b', -30.3)]
+    const remaining = applyPayments(nets, [pay('b', 'a', 10.1)])
+    expect(remaining.find((r) => r.playerId === 'a')?.net).toBeCloseTo(20.2, 10)
+    expect(remaining.find((r) => r.playerId === 'b')?.net).toBeCloseTo(-20.2, 10)
   })
 })
 

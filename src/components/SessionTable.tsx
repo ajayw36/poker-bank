@@ -5,11 +5,19 @@ interface Props {
   rows: SeatRow[]
   editable: boolean
   onBuyIn?: (seatId: string) => void
+  onEditBuyIn?: (buyInId: string, current: number) => void
   onCashOut?: (seatId: string) => void
   onRemoveSeat?: (seatId: string) => void
 }
 
-export function SessionTable({ rows, editable, onBuyIn, onCashOut, onRemoveSeat }: Props) {
+export function SessionTable({
+  rows,
+  editable,
+  onBuyIn,
+  onEditBuyIn,
+  onCashOut,
+  onRemoveSeat,
+}: Props) {
   const totals = rows.reduce(
     (acc, r) => {
       acc.buyIn += totalBuyIn(r.buyIns)
@@ -37,17 +45,37 @@ export function SessionTable({ rows, editable, onBuyIn, onCashOut, onRemoveSeat 
           const cashed = r.seat.buy_out !== null
           return (
             <tr key={r.seat.id}>
-              <td>
+              <td className="player-cell">
                 {r.player.name}
                 {!cashed && editable && <span className="tag" style={{ marginLeft: 6 }}>in</span>}
               </td>
-              <td className="mono">{money(totalBuyIn(r.buyIns))}</td>
-              <td className="mono">{cashed ? money(r.seat.buy_out!) : '—'}</td>
-              <td className={`mono ${net > 0 ? 'pos' : net < 0 ? 'neg' : ''}`}>
+              <td className="mono" data-label="Buy-in">
+                <div className="cell-value">
+                  {money(totalBuyIn(r.buyIns))}
+                  {editable && r.buyIns.length > 0 && (
+                    <div className="buyin-chips">
+                      {r.buyIns.map((b) => (
+                        <button
+                          key={b.id}
+                          className="buyin-chip"
+                          title="Edit or remove this buy-in"
+                          onClick={() => onEditBuyIn?.(b.id, b.amount)}
+                        >
+                          {money(b.amount)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </td>
+              <td className="mono" data-label="Buy-out">
+                {cashed ? money(r.seat.buy_out!) : '—'}
+              </td>
+              <td className={`mono ${net > 0 ? 'pos' : net < 0 ? 'neg' : ''}`} data-label="Net">
                 {cashed ? signedMoney(net) : '—'}
               </td>
               {editable && (
-                <td>
+                <td className="actions-cell">
                   <div className="btn-row" style={{ justifyContent: 'flex-end' }}>
                     <button className="small felt" onClick={() => onBuyIn?.(r.seat.id)}>
                       + Buy-in
@@ -73,13 +101,13 @@ export function SessionTable({ rows, editable, onBuyIn, onCashOut, onRemoveSeat 
       </tbody>
       <tfoot>
         <tr>
-          <td>Total</td>
-          <td className="mono">{money(totals.buyIn)}</td>
-          <td className="mono">{money(totals.buyOut)}</td>
-          <td className={`mono ${totals.net > 0 ? 'pos' : totals.net < 0 ? 'neg' : ''}`}>
+          <td className="player-cell">Total</td>
+          <td className="mono" data-label="Buy-in">{money(totals.buyIn)}</td>
+          <td className="mono" data-label="Buy-out">{money(totals.buyOut)}</td>
+          <td className={`mono ${totals.net > 0 ? 'pos' : totals.net < 0 ? 'neg' : ''}`} data-label="Net">
             {signedMoney(totals.net)}
           </td>
-          {editable && <td></td>}
+          {editable && <td className="actions-cell"></td>}
         </tr>
       </tfoot>
     </table>

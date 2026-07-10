@@ -25,6 +25,8 @@ export function ActiveSession() {
     rows,
     loading,
     addBuyIn,
+    editBuyIn,
+    deleteBuyIn,
     setBuyOut,
     addSeat,
     removeSeat,
@@ -48,6 +50,17 @@ export function ActiveSession() {
   async function handleBuyIn(seatId: string) {
     const amt = promptAmount('Buy-in / re-buy amount ($):')
     if (amt != null && amt > 0) await addBuyIn(seatId, amt)
+  }
+
+  async function handleEditBuyIn(buyInId: string, current: number) {
+    const amt = promptAmount('Correct buy-in amount ($) — enter 0 to remove it:', current)
+    if (amt == null) return
+    if (amt === 0) {
+      if (!confirm('Remove this buy-in?')) return
+      await deleteBuyIn(buyInId)
+    } else {
+      await editBuyIn(buyInId, amt)
+    }
   }
 
   async function handleCashOut(seatId: string) {
@@ -100,10 +113,9 @@ export function ActiveSession() {
         </button>
       </div>
 
-      <div className="split">
-        <div>
-          <div className="panel">
-            <h2>Ledger</h2>
+      <div className="stack">
+        <div className="panel">
+          <h2>Ledger</h2>
             {rows.length === 0 ? (
               <p className="muted">No players in this session yet.</p>
             ) : (
@@ -111,6 +123,7 @@ export function ActiveSession() {
                 rows={rows}
                 editable={!completed}
                 onBuyIn={handleBuyIn}
+                onEditBuyIn={handleEditBuyIn}
                 onCashOut={handleCashOut}
                 onRemoveSeat={rows.length > 0 && !completed ? removeSeat : undefined}
               />
@@ -143,13 +156,11 @@ export function ActiveSession() {
                 </button>
               </div>
             )}
-          </div>
         </div>
 
-        <div>
-          {!completed ? (
-            <div className="panel">
-              <h2>End game</h2>
+        {!completed ? (
+          <div className="panel">
+            <h2>End game</h2>
               {!canSettle && (
                 <p className="muted" style={{ marginTop: 0 }}>
                   Cash out every player to end the game and settle up.
@@ -181,7 +192,6 @@ export function ActiveSession() {
               </button>
             </div>
           </div>
-        </div>
       </div>
     </div>
   )

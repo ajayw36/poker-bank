@@ -61,6 +61,22 @@ export function ledgerImbalance(nets: Net[]): number {
   return cents / 100
 }
 
+/**
+ * Adjust nets for payments that have already been made, so `settle` only
+ * suggests what's still owed. A payment from D to C shrinks D's debt (net moves
+ * up toward 0) and C's credit (net moves down toward 0). Ids not present in
+ * `nets` are ignored, so a stale payment left over from a since-changed grouping
+ * simply has no effect. Settle-time view only — the stored ledger is untouched.
+ */
+export function applyPayments(nets: Net[], paid: Payment[]): Net[] {
+  const delta = new Map<string, number>()
+  for (const p of paid) {
+    delta.set(p.fromId, (delta.get(p.fromId) ?? 0) + toCents(p.amount))
+    delta.set(p.toId, (delta.get(p.toId) ?? 0) - toCents(p.amount))
+  }
+  return nets.map((n) => ({ ...n, net: (toCents(n.net) + (delta.get(n.playerId) ?? 0)) / 100 }))
+}
+
 export const groupKey = (ids: string[]) => 'grp:' + [...ids].sort().join('+')
 
 /**
