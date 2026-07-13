@@ -23,9 +23,9 @@ export function usePlayers() {
   }, [load])
 
   const addPlayer = useCallback(
-    async (name: string) => {
+    async (name: string): Promise<Player | null> => {
       const trimmed = name.trim()
-      if (!trimmed) return
+      if (!trimmed) return null
       const { data, error } = await supabase
         .from('players')
         .insert({ name: trimmed })
@@ -33,9 +33,11 @@ export function usePlayers() {
         .single()
       if (error) {
         setError(error.message)
-        return
+        return null
       }
-      setPlayers((prev) => [...prev, data as Player].sort((a, b) => a.name.localeCompare(b.name)))
+      const player = data as Player
+      setPlayers((prev) => [...prev, player].sort((a, b) => a.name.localeCompare(b.name)))
+      return player
     },
     [],
   )

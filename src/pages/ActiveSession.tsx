@@ -26,7 +26,7 @@ export function ActiveSession() {
     renameSession,
     deleteSession,
   } = useSession(id)
-  const { players } = usePlayers()
+  const { players, addPlayer } = usePlayers()
   const { confirm, promptText } = useDialogs()
   const [addingId, setAddingId] = useState('')
   const [amountReq, setAmountReq] = useState<AmountRequest | null>(null)
@@ -86,6 +86,18 @@ export function ActiveSession() {
     if (!addingId) return
     await addSeat(addingId)
     setAddingId('')
+  }
+
+  async function handleNewPlayer() {
+    const name = await promptText({
+      title: 'Add a new player',
+      hint: 'Creates them in your roster and seats them in this session.',
+      placeholder: 'Player name',
+      confirmLabel: 'Add & seat',
+    })
+    if (name === null) return
+    const player = await addPlayer(name)
+    if (player) await addSeat(player.id)
   }
 
   async function handleEnd() {
@@ -161,30 +173,41 @@ export function ActiveSession() {
               />
             )}
 
-            {!completed && availablePlayers.length > 0 && (
+            {!completed && (
               <div className="row" style={{ marginTop: '1rem' }}>
-                <select
-                  value={addingId}
-                  onChange={(e) => setAddingId(e.target.value)}
-                  style={{
-                    flex: 1,
-                    background: '#0d0d0d',
-                    color: 'var(--text)',
-                    border: '1px solid var(--panel-border)',
-                    borderRadius: 10,
-                    padding: '0.55rem 0.7rem',
-                    font: 'inherit',
-                  }}
+                {availablePlayers.length > 0 && (
+                  <>
+                    <select
+                      value={addingId}
+                      onChange={(e) => setAddingId(e.target.value)}
+                      style={{
+                        flex: 1,
+                        background: '#0d0d0d',
+                        color: 'var(--text)',
+                        border: '1px solid var(--panel-border)',
+                        borderRadius: 10,
+                        padding: '0.55rem 0.7rem',
+                        font: 'inherit',
+                      }}
+                    >
+                      <option value="">Add from roster…</option>
+                      {availablePlayers.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button className="felt" onClick={handleAddPlayer} disabled={!addingId}>
+                      Add
+                    </button>
+                  </>
+                )}
+                <button
+                  className="felt"
+                  onClick={handleNewPlayer}
+                  style={availablePlayers.length === 0 ? { flex: 1 } : undefined}
                 >
-                  <option value="">Add a player…</option>
-                  {availablePlayers.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-                <button className="felt" onClick={handleAddPlayer} disabled={!addingId}>
-                  Add
+                  + New player
                 </button>
               </div>
             )}
